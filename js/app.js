@@ -26,6 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return flags[country] || "🌎";
     };
 
+    const isMobile = () => window.innerWidth <= 768;
+
     async function init() {
         try {
             const listResponse = await fetch('data/levels/_list.json');
@@ -173,6 +175,28 @@ document.addEventListener('DOMContentLoaded', () => {
             div.onclick = () => {
                 document.querySelectorAll('.level-item').forEach(i => i.classList.remove('selected'));
                 div.classList.add('selected');
+                if (isMobile()) {
+                    // En móvil: ocultar lista y mostrar detalle a pantalla completa
+                    const sidebar = document.querySelector('.sidebar-list');
+                    const detail = document.getElementById('level-detail-panel');
+                    if (sidebar) sidebar.style.display = 'none';
+                    if (detail) {
+                        detail.classList.add('mobile-detail-active');
+                        // Agregar botón volver si no existe
+                        if (!document.getElementById('mobile-back-btn')) {
+                            const backBtn = document.createElement('button');
+                            backBtn.id = 'mobile-back-btn';
+                            backBtn.className = 'mobile-back-btn';
+                            backBtn.innerHTML = '✕ Volver a la lista';
+                            backBtn.onclick = () => {
+                                if (sidebar) sidebar.style.display = '';
+                                detail.classList.remove('mobile-detail-active');
+                                backBtn.remove();
+                            };
+                            detail.prepend(backBtn);
+                        }
+                    }
+                }
                 displayLevelDetails(level);
             };
             currentListContainer.appendChild(div);
@@ -255,9 +279,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeView !== 'leaderboard') return;
         
         const selectedCountry = document.getElementById('country-filter').value;
-        
         let displayTitle = selectedCountry ? `Ranking de ${selectedCountry}` : 'Rankings & Estadísticas';
         if (selectedCountry) currentLeaderboardSubView = 'players';
+
+        const mobile = isMobile();
 
         let contentHtml = `
             <div class="leaderboard-view">
@@ -275,65 +300,114 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (currentLeaderboardSubView === 'players') {
             let playersToShow = playerLeaderboard;
-            if (selectedCountry) {
-                playersToShow = playerLeaderboard.filter(p => p.country === selectedCountry);
+            if (selectedCountry) playersToShow = playerLeaderboard.filter(p => p.country === selectedCountry);
+
+            if (mobile) {
+                contentHtml += `<div class="lb-cards">` +
+                    (playersToShow.length > 0 ? playersToShow.map((p, idx) => `
+                        <div class="lb-card">
+                            <div class="lb-card-rank">#${idx + 1}</div>
+                            <div class="lb-card-body">
+                                <div class="lb-card-name clickable-player" data-player="${p.name}">${p.name}</div>
+                                <div class="lb-card-meta">
+                                    <span class="country-tag clickable-country" data-country="${p.country}">${getFlag(p.country)} ${p.country}</span>
+                                    <span class="lb-card-pts">${p.totalPoints} pts</span>
+                                </div>
+                                <div class="lb-card-sub">
+                                    ${p.completedCount} demon${p.completedCount !== 1 ? 's' : ''} · Hardest: <em>${p.hardestName}</em>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('') : `<p class="no-results">No hay jugadores de este país.</p>`) +
+                `</div>`;
+            } else {
+                contentHtml += `
+                    <table class="records-table unified-table">
+                        <thead><tr><th>Puesto</th><th>Jugador</th><th>País</th><th>Demons</th><th>Hardest</th><th>Puntos</th></tr></thead>
+                        <tbody>
+                            ${playersToShow.length > 0 ? playersToShow.map((p, idx) => `
+                                <tr>
+                                    <td><strong>#${idx + 1}</strong></td>
+                                    <td><strong class="clickable-player" data-player="${p.name}">${p.name}</strong></td>
+                                    <td><span class="country-tag clickable-country" data-country="${p.country}">${p.country}</span></td>
+                                    <td>${p.completedCount}</td>
+                                    <td style="font-size:0.9rem;color:#a4c2e6;">${p.hardestName}</td>
+                                    <td style="color:var(--primary-glow);font-weight:bold;">${p.totalPoints}</td>
+                                </tr>
+                            `).join('') : `<tr><td colspan="6" style="text-align:center;padding:2rem;">No hay jugadores registrados de este país.</td></tr>`}
+                        </tbody>
+                    </table>`;
             }
 
-            contentHtml += `
-                <table class="records-table unified-table">
-                    <thead>
-                        <tr><th>Puesto</th><th>Jugador</th><th>País</th><th>Demons</th><th>Hardest</th><th>Puntos</th></tr>
-                    </thead>
-                    <tbody>
-                        ${playersToShow.length > 0 ? playersToShow.map((p, idx) => `
-                            <tr>
-                                <td><strong>#${idx + 1}</strong></td>
-                                <td><strong class="clickable-player" data-player="${p.name}">${p.name}</strong></td>
-                                <td><span class="country-tag clickable-country" data-country="${p.country}">${p.country}</span></td>
-                                <td>${p.completedCount}</td>
-                                <td style="font-size: 0.9rem; color: #a4c2e6;">${p.hardestName}</td>
-                                <td style="color: var(--primary-glow); font-weight: bold;">${p.totalPoints}</td>
-                            </tr>
-                        `).join('') : `<tr><td colspan="6" style="text-align:center; padding: 2rem;">No hay jugadores registrados de este país.</td></tr>`}
-                    </tbody>
-                </table>`;
         } else if (currentLeaderboardSubView === 'countries') {
-            contentHtml += `
-                <table class="records-table unified-table">
-                    <thead>
-                        <tr><th>Puesto</th><th>País</th><th>Jugadores</th><th>Récords Totales</th><th>Demons Distintos</th><th>Hardest del País</th></tr>
-                    </thead>
-                    <tbody>
-                        ${sortedCountries.map((c, idx) => `
-                            <tr>
-                                <td><strong>#${idx + 1}</strong></td>
-                                <td><strong class="clickable-text" data-country="${c.name}">${getFlag(c.name)} ${c.name}</strong></td>
-                                <td>${c.players.size}</td>
-                                <td>${c.recordsCount}</td>
-                                <td><span class="demon-count-badge">${c.uniqueDemons.size}</span></td>
-                                <td style="font-size: 0.9rem; color: #a4c2e6;">${c.hardestName}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>`;
+            if (mobile) {
+                contentHtml += `<div class="lb-cards">` +
+                    sortedCountries.map((c, idx) => `
+                        <div class="lb-card">
+                            <div class="lb-card-rank">#${idx + 1}</div>
+                            <div class="lb-card-body">
+                                <div class="lb-card-name clickable-text" data-country="${c.name}">${getFlag(c.name)} ${c.name}</div>
+                                <div class="lb-card-meta">
+                                    <span>${c.players.size} jugadores</span>
+                                    <span class="demon-count-badge">${c.uniqueDemons.size} demons</span>
+                                </div>
+                                <div class="lb-card-sub">Hardest: <em>${c.hardestName}</em></div>
+                            </div>
+                        </div>
+                    `).join('') +
+                `</div>`;
+            } else {
+                contentHtml += `
+                    <table class="records-table unified-table">
+                        <thead><tr><th>Puesto</th><th>País</th><th>Jugadores</th><th>Récords Totales</th><th>Demons Distintos</th><th>Hardest del País</th></tr></thead>
+                        <tbody>
+                            ${sortedCountries.map((c, idx) => `
+                                <tr>
+                                    <td><strong>#${idx + 1}</strong></td>
+                                    <td><strong class="clickable-text" data-country="${c.name}">${getFlag(c.name)} ${c.name}</strong></td>
+                                    <td>${c.players.size}</td>
+                                    <td>${c.recordsCount}</td>
+                                    <td><span class="demon-count-badge">${c.uniqueDemons.size}</span></td>
+                                    <td style="font-size:0.9rem;color:#a4c2e6;">${c.hardestName}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>`;
+            }
+
         } else if (currentLeaderboardSubView === 'hardest') {
             const hardestList = sortedCountries.filter(c => c.hardestRank !== Infinity).sort((a, b) => a.hardestRank - b.hardestRank);
-            contentHtml += `
-                <table class="records-table unified-table">
-                    <thead>
-                        <tr><th>Top</th><th>País</th><th>Hardest Completado</th><th>Posición en Lista</th></tr>
-                    </thead>
-                    <tbody>
-                        ${hardestList.map((c, idx) => `
-                            <tr>
-                                <td><strong>#${idx + 1}</strong></td>
-                                <td><strong class="clickable-text" data-country="${c.name}">${getFlag(c.name)} ${c.name}</strong></td>
-                                <td style="color: var(--primary-glow); font-weight: bold;">${c.hardestName}</td>
-                                <td>Top #${c.hardestRank}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>`;
+            if (mobile) {
+                contentHtml += `<div class="lb-cards">` +
+                    hardestList.map((c, idx) => `
+                        <div class="lb-card">
+                            <div class="lb-card-rank">#${idx + 1}</div>
+                            <div class="lb-card-body">
+                                <div class="lb-card-name clickable-text" data-country="${c.name}">${getFlag(c.name)} ${c.name}</div>
+                                <div class="lb-card-meta">
+                                    <span style="color:var(--primary-glow);font-weight:bold;">${c.hardestName}</span>
+                                </div>
+                                <div class="lb-card-sub">Top #${c.hardestRank}</div>
+                            </div>
+                        </div>
+                    `).join('') +
+                `</div>`;
+            } else {
+                contentHtml += `
+                    <table class="records-table unified-table">
+                        <thead><tr><th>Top</th><th>País</th><th>Hardest Completado</th><th>Posición en Lista</th></tr></thead>
+                        <tbody>
+                            ${hardestList.map((c, idx) => `
+                                <tr>
+                                    <td><strong>#${idx + 1}</strong></td>
+                                    <td><strong class="clickable-text" data-country="${c.name}">${getFlag(c.name)} ${c.name}</strong></td>
+                                    <td style="color:var(--primary-glow);font-weight:bold;">${c.hardestName}</td>
+                                    <td>Top #${c.hardestRank}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>`;
+            }
         }
 
         contentHtml += `</div>`;
@@ -344,8 +418,8 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('sub-btn-countries').onclick = () => { currentLeaderboardSubView = 'countries'; renderLeaderboardView(); };
             document.getElementById('sub-btn-hardest').onclick = () => { currentLeaderboardSubView = 'hardest'; renderLeaderboardView(); };
         }
-        
-        attachModalClickEvents(); 
+
+        attachModalClickEvents();
     }
 
     function renderInfoView() {
@@ -527,6 +601,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         modalCloseBtn.onclick = () => countryModal.classList.remove('show');
         countryModal.onclick = (e) => { if (e.target === countryModal) countryModal.classList.remove('show'); };
+
+        // Menú hamburguesa móvil
+        const hamburger = document.getElementById('nav-hamburger');
+        const navLinksMenu = document.getElementById('nav-links-menu');
+        if (hamburger && navLinksMenu) {
+            hamburger.onclick = () => {
+                hamburger.classList.toggle('open');
+                navLinksMenu.classList.toggle('mobile-open');
+            };
+            // Cerrar menú al hacer click en un botón de nav
+            navLinksMenu.querySelectorAll('.nav-btn, .nav-link').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    hamburger.classList.remove('open');
+                    navLinksMenu.classList.remove('mobile-open');
+                });
+            });
+        }
     }
 
     function performSearchAndFilter() {
