@@ -27,7 +27,7 @@ Una plataforma web moderna para gestionar y visualizar un ranking de niveles de 
 2. **Leaderboard** (pestaña "Leaderboard")
    - **Jugadores**: Top global de jugadores con más puntos acumulados
    - **Países**: Ranking de países por puntos totales
-   - **Hardest**: Demonios más difíciles completados por país
+   - **Hardest**: Demons plat más difíciles completados por país
    - Filtrable por país
    - Estadísticas: jugadores, demons completados, puntos acumulados
 
