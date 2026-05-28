@@ -603,7 +603,6 @@ document.addEventListener('DOMContentLoaded', () => {
         modalCloseBtn.onclick = () => countryModal.classList.remove('show');
         countryModal.onclick = (e) => { if (e.target === countryModal) countryModal.classList.remove('show'); };
 
-        // Menú hamburguesa móvil
         const hamburger = document.getElementById('nav-hamburger');
         const navLinksMenu = document.getElementById('nav-links-menu');
         if (hamburger && navLinksMenu) {
@@ -611,7 +610,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 hamburger.classList.toggle('open');
                 navLinksMenu.classList.toggle('mobile-open');
             };
-            // Cerrar menú al hacer click en un botón de nav
             navLinksMenu.querySelectorAll('.nav-btn, .nav-link').forEach(btn => {
                 btn.addEventListener('click', () => {
                     hamburger.classList.remove('open');
